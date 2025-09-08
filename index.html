@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CX Data Portal</title>
+<style>
+  body { font-family: verdana, sans-serif; margin: 0; background: #f9f9f9; }
+  header { background: #1976d2; color: white; padding: 1px 5px;
+           display: flex; justify-content: space-between; align-items: center; }
+  h2 { margin: 0; }
+  #logoutBtn {
+    background: #e53935; color: white; border: none ;
+    padding: 8px 10px; border-radius: 5px; cursor: pointer ;width: 5%;
+  }
+  #loginBox {
+    margin: 50px auto; width: 200px; padding: 20px;
+    border: 2px solid #ccc; border-radius: 10px;
+    background: white; box-shadow: 0 10px 6px rgba(0,0,0,3.5);
+  }
+  input, button, select { width: 100%; padding: .5px; margin: 1px 0; border: 1px solid #ccc; border-radius: 1px; }
+  button { background: #1976d2; color: white; border: none; cursor: pointer; }
+  button:hover { background: #1565c0; }
+  #dataBox { padding: .5px; display: none;}
+  table { border-collapse: collapse; margin-top: 1px; font-size: 9px; table-layout: auto; width: 100%px; }
+  th, td { border: 1px solid #050505; padding: .5px .5px; text-align: left; white-space: nowrap;}
+  th { background: #1976d2; color: white; position: sticky; top: 0; z-index: 2; }
+  tr:nth-child(even) { background: #f2f2f2; }
+  .filter-row th { background: #f1f1f1; top: 20px; z-index: 1; }
+  .update-fields { display: flex; gap: 1px;}
+  .update-fields select, .update-fields input { flex: 1; padding: 3px; font-size: 9px; }
+  .update-btn { background: #43a047; color: white; border: none; padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 9px; }
+  .toggle-btn { background: #555; color: white; border: none; padding: 4px 6px; margin-bottom: 10px; cursor: pointer; border-radius: 4px; font-size: 9px; }
+  .hidden-col { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h2>Data Portal</h2>
+  <button id="logoutBtn" style="display:none;" onclick="logout()">Logout</button>
+</header>
+
+<div id="loginBox">
+  <h3>Login</h3>
+  <input type="text" id="username" placeholder="TC Name">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p id="loginMsg" style="color:red;"></p>
+</div>
+
+<div id="dataBox">
+  <button class="toggle-btn" onclick="toggleExtra()">Show More Fields</button>
+  <div style="overflow-x:auto; max-height:500px;">
+    <table id="dataTable"></table>
+  </div>
+</div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbyMusOFGX6guWjbHOPvVZRu_5W3AUuW7ghwkSZSpwmm-gH6JqNjb14cKq7OQ-1yil9-/exec";
+let currentUser = "";
+let hiddenCols = ["Nominee Name", "Nominee Number", "CIBIL Number", "TC Name"];
+
+// LocalStorage login persistence
+window.onload = function() {
+  const storedUser = localStorage.getItem("currentUser");
+  if(storedUser) {
+    currentUser = storedUser;
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("dataBox").style.display = "block";
+    document.getElementById("logoutBtn").style.display = "inline-block";
+    loadData();
+  }
+};
+
+function login() {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const now = new Date();
+  const h = now.getHours();
+  if(h >= 23 || h < 7) { document.getElementById("loginMsg").innerText = "⛔ Login allowed only 7AM–8PM"; return; }
+
+  fetch(API_URL, { method:"POST", body: JSON.stringify({action:"login", username, password}) })
+  .then(res=>res.json())
+  .then(data=>{
+    if(data.status==="success"){
+      currentUser=username;
+      localStorage.setItem("currentUser", username);
+      document.getElementById("loginBox").style.display="none";
+      document.getElementById("dataBox").style.display="block";
+      document.getElementById("logoutBtn").style.display="inline-block";
+      loadData();
+    } else { document.getElementById("loginMsg").innerText=data.message; }
+  });
+}
+
+function logout(msg="You have been logged out.") {
+  currentUser=""; localStorage.clear();
+  document.getElementById("dataBox").style.display="none";
+  document.getElementById("loginBox").style.display="block";
+  document.getElementById("logoutBtn").style.display="none";
+  document.getElementById("loginMsg").innerText=msg;
+}
+
+function formatDate(d, colName="") {
+  if(!d) return "";
+  const date = new Date(d);
+  const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const mm = months[date.getMonth()];
+  const dd = ("0"+date.getDate()).slice(-2);
+  const yyyy = date.getFullYear();
+  // Apply format only for Expiry Date and Loan Date columns
+  if(colName==="date" || colName==="date") return `${mmm}/${dd}/${yyyy}`;
+  return d;
+}
+
+// Load table
+function loadData() {
+  fetch(API_URL, { method:"POST", body: JSON.stringify({action:"getData", username: currentUser}) })
+  .then(res=>res.json())
+  .then(data=>{
+    if(data.status==="success") { renderTable(data.headers, data.rows); autoFitColumns(); }
+  });
+}
+
+// Render table
+function renderTable(headers, rows) {
+  const table=document.getElementById("dataTable");
+  table.innerHTML="";
+  headers=headers.filter(h=>h!=="TC Name");
+
+  // Header
+  let tr=document.createElement("tr");
+  headers.forEach(h=>{
+    let th=document.createElement("th"); th.textContent=h;
+    if(hiddenCols.includes(h)) th.classList.add("hidden-col");
+    tr.appendChild(th);
+  });
+  ["Disposition","Remarks","PTP Date","Save"].forEach(h=>{
+    let th=document.createElement("th"); th.textContent=h;
+    tr.appendChild(th);
+  });
+  table.appendChild(tr);
+
+  // Filter row
+  let filterTr=document.createElement("tr");
+  filterTr.classList.add("filter-row");
+  headers.forEach((h,i)=>{
+    let th=document.createElement("th");
+    let input=document.createElement("input"); input.placeholder="Filter";
+    input.onkeyup=function(){ filterTable(i,this.value); };
+    if(hiddenCols.includes(h)) th.classList.add("hidden-col");
+    th.appendChild(input);
+    filterTr.appendChild(th);
+  });
+  for(let i=0;i<5;i++) filterTr.appendChild(document.createElement("th"));
+  table.appendChild(filterTr);
+
+  // Rows
+  rows.forEach(row=>{
+    let tr=document.createElement("tr");
+    headers.forEach((h,i)=>{
+      let td=document.createElement("td");
+      if(row[i] && !isNaN(Date.parse(row[i]))){ td.textContent=formatDate(row[i]); }
+      else{ td.textContent=row[i]; }
+      if(hiddenCols.includes(h)) td.classList.add("hidden-col");
+      tr.appendChild(td);
+    });
+
+    // Update fields cell
+    let dispTd=document.createElement("td");
+    dispTd.innerHTML=`<select class="disp"><option>PTP</option><option>RNR</option></select>`;
+    let remarkTd=document.createElement("td");
+    remarkTd.innerHTML=`<input type="text" class="remark" placeholder="Remarks">`;
+    let ptpTd=document.createElement("td");
+    ptpTd.innerHTML=`<input type="date" class="ptp">`;
+    tr.appendChild(dispTd); tr.appendChild(remarkTd); tr.appendChild(ptpTd);
+
+    // Save button
+    let saveTd=document.createElement("td");
+    saveTd.innerHTML=`<button class="update-btn">Save</button>`;
+    saveTd.querySelector(".update-btn").onclick=()=>{
+      const disp=tr.querySelector(".disp").value;
+      const remark=tr.querySelector(".remark").value;
+      let ptp=tr.querySelector(".ptp").value;
+      if(ptp){ ptp=formatDate(ptp); }
+      const secGlId=row[headers.indexOf("Sec Gl Id")];
+      fetch(API_URL,{
+        method:"POST",
+        body: JSON.stringify({ action:"updateRow", secGlId, disposition:disp, remarks:remark, ptpDate:ptp, user:currentUser })
+      }).then(r=>r.json()).then(res=>{
+        alert(res.message);
+        dispTd.textContent=disp;
+        remarkTd.textContent=remark;
+        ptpTd.textContent=ptp;
+        lastTd.textContent = `${disp} | ${remark} | ${ptp}`;
+        autoFitColumns();
+      });
+    };
+    tr.appendChild(saveTd);
+    table.appendChild(tr);
+  });
+}
+
+// Filter
+function filterTable(colIndex, query) {
+  document.querySelectorAll("#dataTable tr").forEach((row,i)=>{
+    if(i<2) return;
+    const cell=row.children[colIndex];
+    row.style.display=(cell && cell.textContent.toLowerCase().includes(query.toLowerCase()))?"":"none";
+  });
+}
+
+// Toggle hidden columns
+function toggleExtra(){
+  document.querySelectorAll(".hidden-col").forEach(el=>{
+    el.style.display=(el.style.display==="none"||el.style.display==="")?"table-cell":"none";
+  });
+}
+
+// Auto-fit columns
+function autoFitColumns(){
+  const table=document.getElementById("dataTable");
+  const rows=table.rows; if(!rows.length) return;
+  const colCount=rows[0].cells.length;
+  for(let i=0;i<colCount;i++){
+    let maxWidth=0;
+    for(let j=0;j<rows.length;j++){
+      const cell=rows[j].cells[i];
+      if(cell){ cell.style.width="auto"; const w=cell.scrollWidth; if(w>maxWidth) maxWidth=w; }
+    }
+    for(let j=0;j<rows.length;j++){ if(rows[j].cells[i]) rows[j].cells[i].style.width=(maxWidth+10)+"px"; }
+  }
+}
+</script>
+</body>
+</html>
