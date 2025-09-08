@@ -6,32 +6,23 @@
 <title>CX Data Portal</title>
 <style>
   body { font-family: verdana, sans-serif; margin: 0; background: #f9f9f9; }
-  header { background: #1976d2; color: white; padding: 1px 5px;
-           display: flex; justify-content: space-between; align-items: center; }
+  header { background: #1976d2; color: white; padding: 1px 5px; display: flex; justify-content: space-between; align-items: center; }
   h2 { margin: 0; }
-  #logoutBtn {
-    background: #e53935; color: white; border: none ;
-    padding: 8px 10px; border-radius: 5px; cursor: pointer ;width: 5%;
-  }
-  #loginBox {
-    margin: 50px auto; width: 200px; padding: 20px;
-    border: 2px solid #ccc; border-radius: 10px;
-    background: white; box-shadow: 0 10px 6px rgba(0,0,0,3.5);
-  }
-  input, button, select { width: 100%; padding: .5px; margin: 1px 0; border: 1px solid #ccc; border-radius: 1px; }
+  #logoutBtn { background: #e53935; color: white; border: none; padding: 8px 10px; border-radius: 5px; cursor: pointer ;width: 5%; }
+  #loginBox { margin: 100px auto; width: 200px; padding: 50px; border: 2px solid #ccc; border-radius: 10px; background: white; box-shadow: 0 10px 10px rgba(0,0,0,0.3); }
+  input, button, select { width: 100%; padding: 1px; margin: 2px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 11px; }
   button { background: #1976d2; color: white; border: none; cursor: pointer; }
   button:hover { background: #1565c0; }
   #dataBox { padding: .5px; display: none;}
-  table { border-collapse: collapse; margin-top: 1px; font-size: 9px; table-layout: auto; width: 100%px; }
-  th, td { border: 1px solid #050505; padding: .5px .5px; text-align: left; white-space: nowrap;}
+  table { border-collapse: collapse; margin-top: 1px; font-size: 9px; table-layout: auto; width: 100%; }
+  th, td { border: 1px solid #050505; padding: .5px .5px; text-align: left; white-space: nowrap; vertical-align: top; }
   th { background: #1976d2; color: white; position: sticky; top: 0; z-index: 2; }
   tr:nth-child(even) { background: #f2f2f2; }
-  .filter-row th { background: #f1f1f1; top: 20px; z-index: 1; }
-  .update-fields { display: flex; gap: 1px;}
-  .update-fields select, .update-fields input { flex: 1; padding: 3px; font-size: 9px; }
-  .update-btn { background: #43a047; color: white; border: none; padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 9px; }
-  .toggle-btn { background: #555; color: white; border: none; padding: 4px 6px; margin-bottom: 10px; cursor: pointer; border-radius: 4px; font-size: 9px; }
+  .filter-row th { background: #f1f1f1; top: 20px; z-index: 1; white-space: nowrap }
+  .update-fields { display: flex; flex-direction: column; gap: 2px; }
+  .update-btn { background: #43a047; color: white; border: none; padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 9px; margin-top: 2px; }
   .hidden-col { display: none; }
+  .toggle-btn { background: #555; color: white; border: none; padding: 4px 6px; margin-bottom: 10px; cursor: pointer; border-radius: 4px; font-size: 9px; }
 </style>
 </head>
 <body>
@@ -49,18 +40,18 @@
 </div>
 
 <div id="dataBox">
-  <button class="toggle-btn" onclick="toggleExtra()">Show More Fields</button>
+  <button class="toggle-btn" onclick="toggleExtra()">Show More Details</button>
   <div style="overflow-x:auto; max-height:500px;">
     <table id="dataTable"></table>
   </div>
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbyMusOFGX6guWjbHOPvVZRu_5W3AUuW7ghwkSZSpwmm-gH6JqNjb14cKq7OQ-1yil9-/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbw3j-HCB6-O74r0myrv7n_mP5TuNzPERdzYVjklKNpQ8K7CvJ1I1Rvb2SWZqB1s_lrH/exec"; // replace with your Apps Script URL
 let currentUser = "";
-let hiddenCols = ["Nominee Name", "Nominee Number", "CIBIL Number", "TC Name"];
+let hiddenCols = ["Nominee Name", "Nominee Number", "CIBIL Number", "TC Name","Loan Date"];
 
-// LocalStorage login persistence
+// On load
 window.onload = function() {
   const storedUser = localStorage.getItem("currentUser");
   if(storedUser) {
@@ -104,132 +95,187 @@ function logout(msg="You have been logged out.") {
 function formatDate(d, colName="") {
   if(!d) return "";
   const date = new Date(d);
-  const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const mm = months[date.getMonth()];
-  const dd = ("0"+date.getDate()).slice(-2);
+  if(isNaN(date)) return d;
+  const mm = ("0" + (date.getMonth()+1)).slice(-2);
+  const dd = ("0" + date.getDate()).slice(-2);
   const yyyy = date.getFullYear();
-  // Apply format only for Expiry Date and Loan Date columns
-  if(colName==="date" || colName==="date") return `${mmm}/${dd}/${yyyy}`;
+  if(colName==="Loan Date" || colName==="Expiry Date"){ return `${mm}-${dd}-${yyyy}`; }
   return d;
 }
 
-// Load table
 function loadData() {
   fetch(API_URL, { method:"POST", body: JSON.stringify({action:"getData", username: currentUser}) })
   .then(res=>res.json())
   .then(data=>{
-    if(data.status==="success") { renderTable(data.headers, data.rows); autoFitColumns(); }
+    if(data.status==="success") { renderTable(data.headers, data.rows); }
   });
 }
 
-// Render table
 function renderTable(headers, rows) {
   const table=document.getElementById("dataTable");
   table.innerHTML="";
   headers=headers.filter(h=>h!=="TC Name");
 
-  // Header
   let tr=document.createElement("tr");
   headers.forEach(h=>{
     let th=document.createElement("th"); th.textContent=h;
     if(hiddenCols.includes(h)) th.classList.add("hidden-col");
     tr.appendChild(th);
   });
-  ["Disposition","Remarks","PTP Date","Save"].forEach(h=>{
-    let th=document.createElement("th"); th.textContent=h;
-    tr.appendChild(th);
-  });
+  tr.appendChild(document.createElement("th")); // Follow-up/Closure column
   table.appendChild(tr);
 
-  // Filter row
-  let filterTr=document.createElement("tr");
-  filterTr.classList.add("filter-row");
-  headers.forEach((h,i)=>{
-    let th=document.createElement("th");
-    let input=document.createElement("input"); input.placeholder="Filter";
-    input.onkeyup=function(){ filterTable(i,this.value); };
-    if(hiddenCols.includes(h)) th.classList.add("hidden-col");
-    th.appendChild(input);
-    filterTr.appendChild(th);
-  });
-  for(let i=0;i<5;i++) filterTr.appendChild(document.createElement("th"));
-  table.appendChild(filterTr);
-
-  // Rows
   rows.forEach(row=>{
     let tr=document.createElement("tr");
     headers.forEach((h,i)=>{
       let td=document.createElement("td");
-      if(row[i] && !isNaN(Date.parse(row[i]))){ td.textContent=formatDate(row[i]); }
-      else{ td.textContent=row[i]; }
+      if(row[i] && !isNaN(Date.parse(row[i]))){ td.textContent=formatDate(row[i], h); }
+      else { td.textContent=row[i]; }
       if(hiddenCols.includes(h)) td.classList.add("hidden-col");
       tr.appendChild(td);
     });
 
-    // Update fields cell
-    let dispTd=document.createElement("td");
-    dispTd.innerHTML=`<select class="disp"><option>PTP</option><option>RNR</option></select>`;
-    let remarkTd=document.createElement("td");
-    remarkTd.innerHTML=`<input type="text" class="remark" placeholder="Remarks">`;
-    let ptpTd=document.createElement("td");
-    ptpTd.innerHTML=`<input type="date" class="ptp">`;
-    tr.appendChild(dispTd); tr.appendChild(remarkTd); tr.appendChild(ptpTd);
-
-    // Save button
-    let saveTd=document.createElement("td");
-    saveTd.innerHTML=`<button class="update-btn">Save</button>`;
-    saveTd.querySelector(".update-btn").onclick=()=>{
-      const disp=tr.querySelector(".disp").value;
-      const remark=tr.querySelector(".remark").value;
-      let ptp=tr.querySelector(".ptp").value;
-      if(ptp){ ptp=formatDate(ptp); }
-      const secGlId=row[headers.indexOf("Sec Gl Id")];
-      fetch(API_URL,{
-        method:"POST",
-        body: JSON.stringify({ action:"updateRow", secGlId, disposition:disp, remarks:remark, ptpDate:ptp, user:currentUser })
-      }).then(r=>r.json()).then(res=>{
-        alert(res.message);
-        dispTd.textContent=disp;
-        remarkTd.textContent=remark;
-        ptpTd.textContent=ptp;
-        lastTd.textContent = `${disp} | ${remark} | ${ptp}`;
-        autoFitColumns();
-      });
-    };
-    tr.appendChild(saveTd);
+    let actionTd=document.createElement("td");
+    actionTd.appendChild(buildFollowupForm(row, headers));
+    tr.appendChild(actionTd);
     table.appendChild(tr);
   });
 }
 
-// Filter
-function filterTable(colIndex, query) {
-  document.querySelectorAll("#dataTable tr").forEach((row,i)=>{
-    if(i<2) return;
-    const cell=row.children[colIndex];
-    row.style.display=(cell && cell.textContent.toLowerCase().includes(query.toLowerCase()))?"":"none";
-  });
-}
-
-// Toggle hidden columns
 function toggleExtra(){
   document.querySelectorAll(".hidden-col").forEach(el=>{
     el.style.display=(el.style.display==="none"||el.style.display==="")?"table-cell":"none";
   });
 }
 
-// Auto-fit columns
-function autoFitColumns(){
-  const table=document.getElementById("dataTable");
-  const rows=table.rows; if(!rows.length) return;
-  const colCount=rows[0].cells.length;
-  for(let i=0;i<colCount;i++){
-    let maxWidth=0;
-    for(let j=0;j<rows.length;j++){
-      const cell=rows[j].cells[i];
-      if(cell){ cell.style.width="auto"; const w=cell.scrollWidth; if(w>maxWidth) maxWidth=w; }
+function buildFollowupForm(row, headers){
+  const wrapper=document.createElement("div"); wrapper.classList.add("update-fields");
+
+  const typeSel=document.createElement("select");
+  typeSel.innerHTML=`<option value="">--Select--</option><option value="Closure">Closure</option><option value="Follow-up">Follow-up</option>`;
+  wrapper.appendChild(typeSel);
+
+  const dynamicDiv=document.createElement("div"); wrapper.appendChild(dynamicDiv);
+
+  const saveBtn=document.createElement("button"); saveBtn.className="update-btn"; saveBtn.textContent="Submit";
+  wrapper.appendChild(saveBtn);
+
+  typeSel.onchange=function(){
+    dynamicDiv.innerHTML="";
+    if(typeSel.value==="Closure"){
+      const closureSel=document.createElement("select");
+      closureSel.innerHTML=`<option value="">--Select Closure Type--</option>
+        <option>Renewed</option><option>Released</option><option>ITO Booked</option>
+        <option>RnRP Booked</option><option>Released and Rebook</option>
+        <option>MIP -interest cleared</option><option>ITO Completed</option>
+        <option>Post Auction Payment</option>`;
+      dynamicDiv.appendChild(closureSel);
+
+      closureSel.onchange=function(){
+        dynamicDiv.querySelectorAll("input, select:not(:first-child)").forEach(el=>el.remove()); // clear old inputs
+
+        if(this.value==="Released and Rebook"){
+          const rebook=document.createElement("input"); rebook.type="number"; rebook.placeholder="New Rebook Sec GL ID";
+          dynamicDiv.appendChild(rebook);
+        } else if(this.value==="Post Auction Payment"){
+          const amtInput=document.createElement("input"); amtInput.type="number"; amtInput.placeholder="Unsec Collected Amount";
+          const fileInput=document.createElement("input"); fileInput.type="file"; fileInput.accept="image/*";
+          const dateInput=document.createElement("input"); dateInput.type="date";
+          const modeSel=document.createElement("select");
+          modeSel.innerHTML=`<option>Cash Deposit At Branch</option><option>Online</option>`;
+          dynamicDiv.append(amtInput, fileInput, dateInput, modeSel);
+        }
+      };
+    } else if(typeSel.value==="Follow-up"){
+      const dispSel=document.createElement("select");
+      dispSel.innerHTML=`<option value="">--Select Disposition--</option>
+        <option>Promise to Pay Renewal</option><option>Promise to Pay Release</option>
+        <option>Promise to Pay ITO</option><option>Promise to Pay RNRP Offline</option>
+        <option>Promise to Pay RNRP Online</option><option>Promise to Pay MIP interest</option>
+        <option>Paid for ITO Awaiting for Slot</option><option>Paid for RNRP Awaiting for Slot</option>
+        <option>PTP But Not Confirm Date</option><option>UT A/C Cx Will Clear by Tenure End</option>
+        <option>Call Back. Request</option><option>Left Message</option>
+        <option>Broken Promise to Pay</option><option>Escalation Case</option>
+        <option>Medical Issue</option><option>Abuse Cx</option>
+        <option>Direct Fed NPA</option><option>Intent To Auction</option>
+        <option>Refuse to Pay</option><option>Wrong Number</option>
+        <option>Call Drop</option><option>Invalid Number</option>
+        <option>Not reachable</option><option>Ringing No Response</option>
+        <option>Switched-off</option><option>No NPA At Branch(Mail Confirmed)</option>
+        <option>No NPA At Branch(Customer Will Visit branch)</option><option>Legal Case</option>
+        <option>Customer Deceased</option><option>Renewed</option><option>Released</option>
+        <option>ITO Booked</option><option>RNRP Online Booked</option><option>RNRP Offline Booked</option>
+        <option>MIP interest cleared</option><option>ITO Completed</option><option>RNRP Completed</option>
+        <option>Pay Within Week.</option><option>Promise to Pay Rebook</option>
+        <option>Promise to Pay RNRP</option><option>Tech Issue</option>
+        <option>Promise to Pay for Direct NPA Case</option>
+        <option>Customer Cleared Direct NPA Case</option>`;
+      dynamicDiv.appendChild(dispSel);
+
+      const remark=document.createElement("input"); remark.placeholder="Remarks"; dynamicDiv.appendChild(remark);
+      const ptp=document.createElement("input"); ptp.type="date"; ptp.style.display="none"; dynamicDiv.appendChild(ptp);
+
+      dispSel.onchange=function(){
+        const ptpNeeded=["Promise to Pay Renewal","Promise to Pay Release","Promise to Pay ITO","Promise to Pay RNRP Offline","Promise to Pay RNRP Online","Promise to Pay MIP interest"];
+        ptp.style.display=ptpNeeded.includes(this.value)?"block":"none";
+      };
     }
-    for(let j=0;j<rows.length;j++){ if(rows[j].cells[i]) rows[j].cells[i].style.width=(maxWidth+10)+"px"; }
+  };
+
+  saveBtn.onclick=function(){
+  const secGlId=row[headers.indexOf("Sec Gl Id")];
+  const payload={ action:"updateRow", user:currentUser, secGlId, followupType:typeSel.value };
+
+  if(typeSel.value==="Closure"){
+    const closureSel=dynamicDiv.querySelector("select");
+    payload.closureType=closureSel?closureSel.value:"";
+
+    if(closureSel && closureSel.value==="Released and Rebook"){
+      payload.rebookId=dynamicDiv.querySelector("input[type=number]")?.value || "";
+      sendUpdate(payload, true); // disable only for closure
+    } else if(closureSel && closureSel.value==="Post Auction Payment"){
+      const fileInput=dynamicDiv.querySelector("input[type=file]");
+      const amtInput=dynamicDiv.querySelector("input[type=number]");
+      const dateInput=dynamicDiv.querySelector("input[type=date]");
+      const modeSel=dynamicDiv.querySelector("select");
+
+      if(fileInput.files[0]){
+        const reader = new FileReader();
+        reader.onload = function(e){
+          payload.paymentScreenshot = e.target.result.split(",")[1]; // Base64
+          payload.unsecAmt = amtInput.value;
+          payload.payDate = dateInput.value;
+          payload.mode = modeSel.value;
+          sendUpdate(payload, true); // disable only for closure
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        payload.paymentScreenshot = "";
+        payload.unsecAmt = amtInput.value;
+        payload.payDate = dateInput.value;
+        payload.mode = modeSel.value;
+        sendUpdate(payload, true); // disable only for closure
+      }
+    } else sendUpdate(payload, true);
+  } else if(typeSel.value==="Follow-up"){
+    payload.disposition=dynamicDiv.querySelector("select")?.value || "";
+    payload.remarks=dynamicDiv.querySelector("input[placeholder=Remarks]")?.value || "";
+    payload.ptpDate=dynamicDiv.querySelector("input[type=date]")?.value || "";
+    sendUpdate(payload, false); // do not disable inputs for follow-up
   }
+};
+
+function sendUpdate(payload, disableInputs){
+  fetch(API_URL,{ method:"POST", body: JSON.stringify(payload)})
+  .then(r=>r.json()).then(res=>{
+    alert(res.message);
+    if(disableInputs){
+      wrapper.querySelectorAll("input, select, button").forEach(el=>el.disabled=true);
+    }
+  });
+}
+
+  return wrapper;
 }
 </script>
 </body>
