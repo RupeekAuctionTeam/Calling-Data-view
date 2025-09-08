@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CX Data Portal</title>
+<title>Data Portal</title>
 <style>
   body { font-family: Verdana, sans-serif; margin: 0; background: #f0f4f9; }
   header { background: #1976d2; color: white; padding: 1px 5px; display: flex; justify-content: space-between; align-items: center; }
@@ -53,7 +53,7 @@
     font-size: 13px;
   }
 
-  #logoutBtn { background: #e53935; color: white; border: none; padding: 8px 10px; border-radius: 5px; cursor: pointer; width: 80px; }
+  #logoutBtn { background: #e53935; color: white; border: none; padding: 1px 5px; border-radius: 5px; cursor: pointer; width: 80px; align: top; font-size: 13px;  }
 
  #dataBox { padding: .5px; display: none;}
   table { border-collapse: collapse; margin-top: 1px; font-size: 9px; table-layout: auto; width: 100%; }
@@ -65,17 +65,18 @@
   .update-fields { display: flex; flex-direction: column; gap: 2px; }
   .update-btn { background: #43a047; color: white; border: none; padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 9px; margin-top: 2px; }
   .hidden-col { display: none; }
-  .toggle-btn { background: #555; color: white; border: none; padding: 4px 6px; margin-bottom: 10px; cursor: pointer; border-radius: 4px; font-size: 9px; }
+  .toggle-btn { background: #555; color: white; border: none; padding: 4px 6px; margin-bottom: 1px; cursor: pointer; border-radius: 4px; font-size: 13px; }
 </style>
 </head>
 <body>
 <header>
   <h2>Data Portal</h2>
-  <button id="logoutBtn" style="display:none;" onclick="logout()">Logout</button>
+ 
+  <button class="toggle-btn" onclick="toggleExtra()">Show More Details</button> <button id="logoutBtn" style="display:none;" onclick="logout()">Logout</button>
 </header>
 
 <div id="loginBox">
-  <h3>🔐 Secure Login</h3>
+  <h3>🔐 Agent Login</h3>
   <input type="text" id="username" placeholder="Enter TC Name">
   <input type="password" id="password" placeholder="Enter Password">
   <button onclick="login()">Login</button>
@@ -83,7 +84,6 @@
 </div>
 
 <div id="dataBox">
-  <button class="toggle-btn" onclick="toggleExtra()">Show More Details</button>
   <div style="overflow-x:auto; max-height:500px;">
     <table id="dataTable"></table>
   </div>
@@ -337,3 +337,4 @@ function sendUpdate(payload, disableInputs){
 </script>
 </body>
 </html>
+
